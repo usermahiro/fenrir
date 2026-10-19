@@ -933,7 +933,7 @@ DEVICES = [
 # patch_da.py imports this to resolve device-specific DA paths.
 DA_DEVICES = {}
 for d in DEVICES:
-    cfg = d.da_config
+    cfg = d.device_opts.get('firmware', {}).get('da', {})
     if cfg.get('enabled'):
         DA_DEVICES[d.name.lower()] = {
             'dir': d.name.lower(),
