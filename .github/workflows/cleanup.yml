@@ -1,0 +1,29 @@
+name: Cleanup Device Binaries
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Remove device binaries and headers
+        run: |
+          rm -f bin/*.bin
+          rm -f payload/devices/*.h
+          mkdir -p bin
+          touch bin/.gitkeep
+
+      - name: Commit and push changes
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git diff --cached --quiet || git commit -m "Remove bundled device binaries and headers via CI cleanup"
+          git push

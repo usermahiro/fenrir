@@ -1,0 +1,62 @@
+name: Build Fenrir Payload
+
+on:
+  workflow_dispatch:
+    inputs:
+      device:
+        description: "Device codename (contoh: x6886)"
+        required: true
+        type: string
+      lk_url:
+        description: "Link lk/bootloader (boleh Pixeldrain atau link direct)"
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install Python deps (required by inject.sh)
+        run: pip install -r requirements.txt
+
+      - name: Resolve download link
+        id: resolve
+        env:
+          RAW_URL: ${{ inputs.lk_url }}
+        run: |
+          URL="$RAW_URL"
+          if [[ "$URL" == *"pixeldrain.com/u/"* ]]; then
+            ID="${URL##*/u/}"
+            ID="${ID%%\?*}"
+            URL="https://pixeldrain.com/api/file/${ID}?download"
+          fi
+          echo "url=$URL" >> "$GITHUB_OUTPUT"
+
+      - name: Download bootloader image
+        run: |
+          mkdir -p bin
+          curl -L "${{ steps.resolve.outputs.url }}" -o "bin/${{ inputs.device }}.bin"
+          ls -la bin/
+
+      - name: Build & inject
+        run: |
+          chmod +x build.sh inject.sh
+          ./build.sh "${{ inputs.device }}" "bin/${{ inputs.device }}.bin"
+
+      - name: Create release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ inputs.device }}-${{ github.run_number }}
+          name: "${{ inputs.device }} fenrir build #${{ github.run_number }}"
+          files: "*-fenrir.bin"
